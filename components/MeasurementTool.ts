@@ -1,4 +1,4 @@
-import { Canvas, Line, Textbox, Point } from 'fabric';
+import { Canvas, Line, Textbox, Point, TEvent } from 'fabric';
 
 export class MeasurementTool {
   private canvas: Canvas;
@@ -7,9 +7,11 @@ export class MeasurementTool {
   private measurementText: Textbox | null = null;
   private startPoint: Point | null = null;
   private isActive: boolean = false;
-  private boundMouseDown: any;
-  private boundMouseMove: any;
-  private boundMouseUp: any;
+  private boundMouseDown: (e: TEvent) => void;
+  private boundMouseMove: (e: TEvent) => void;
+  private boundMouseUp: (e: TEvent) => void;
+  private lines: Line[] = [];
+  private measurementTexts: Textbox[] = [];
 
   constructor(canvas: Canvas) {
     this.canvas = canvas;
@@ -19,44 +21,86 @@ export class MeasurementTool {
     this.boundMouseUp = this.onMouseUp.bind(this);
   }
 
-  private onMouseDown(o: any) {
+  private onMouseDown(o: TEvent) {
     if (!this.isActive) return;
     
-    const pointer = this.canvas.getScenePoint(o.e);
-    this.isDrawing = true;
-    this.startPoint = pointer;
+    const pointer = this.canvas.getScenePoint(o.e as MouseEvent);
 
-    this.line = new Line([pointer.x, pointer.y, pointer.x, pointer.y], {
-      stroke: '#333',
-      strokeWidth: 2,
-      selectable: true,
-    });
+    if (!this.isDrawing) {
+      this.isDrawing = true;
+      this.startPoint = pointer;
 
-    this.measurementText = new Textbox('0 px', {
-      left: pointer.x,
-      top: pointer.y,
-      fontSize: 14,
-      fill: '#333',
-      selectable: false,
-      width: 100,
-    });
+      this.line = new Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+        stroke: '#00FF00',
+        strokeWidth: 2,
+        selectable: true,
+      });
 
-    this.canvas.add(this.line);
-    this.canvas.add(this.measurementText);
+      const startMarker = new Line([
+        pointer.x, pointer.y - 5,
+        pointer.x, pointer.y + 5
+      ], {
+        stroke: '#00FF00',
+        strokeWidth: 2,
+        selectable: false,
+      });
+
+      this.measurementText = new Textbox('0 px', {
+        left: pointer.x,
+        top: pointer.y,
+        fontSize: 14,
+        fill: '#00FF00',
+        selectable: false,
+        width: 100,
+      });
+
+      this.canvas.add(this.line);
+      this.canvas.add(startMarker);
+      this.canvas.add(this.measurementText);
+    } 
+    else if (this.isDrawing) {
+      this.isDrawing = false;
+      // Store the completed line and text
+      if (this.line && this.measurementText) {
+        this.lines.push(this.line);
+        this.measurementTexts.push(this.measurementText);
+      }
+      // Reset current line and text without removing them from canvas
+      this.line = null;
+      this.measurementText = null;
+      this.startPoint = null;
+    }
+
     this.canvas.renderAll();
   }
 
-  private onMouseMove(o: any) {
+  private onMouseMove(o: TEvent) {
     if (!this.isActive || !this.isDrawing) return;
 
-    const pointer = this.canvas.getScenePoint(o.e);
+    const pointer = this.canvas.getScenePoint(o.e as MouseEvent);
     if (this.line && this.measurementText && this.startPoint) {
       this.line.set({
         x2: pointer.x,
         y2: pointer.y,
       });
 
-      // Calculate distance
+      const endMarker = new Line([
+        pointer.x, pointer.y - 5,
+        pointer.x, pointer.y + 5
+      ], {
+        stroke: '#00FF00',
+        strokeWidth: 2,
+        selectable: false,
+      });
+
+      const objects = this.canvas.getObjects();
+      const lastObject = objects[objects.length - 1];
+      if (lastObject instanceof Line && lastObject !== this.line) {
+        this.canvas.remove(lastObject);
+      }
+
+      this.canvas.add(endMarker);
+
       const distance = Math.round(
         Math.sqrt(
           Math.pow(pointer.x - this.startPoint.x, 2) +
@@ -64,7 +108,6 @@ export class MeasurementTool {
         )
       );
 
-      // Update measurement text
       this.measurementText.set({
         text: `${distance} px`,
         left: (this.startPoint.x + pointer.x) / 2,
@@ -76,7 +119,7 @@ export class MeasurementTool {
   }
 
   private onMouseUp() {
-    this.isDrawing = false;
+    // Keep empty or remove if not needed
   }
 
   public activate() {
@@ -95,9 +138,24 @@ export class MeasurementTool {
     this.canvas.defaultCursor = 'default';
     this.canvas.selection = true;
     
+    // Reset all drawing states
+    this.isDrawing = false;
+    this.line = null;
+    this.measurementText = null;
+    this.startPoint = null;
+    
     // Remove event listeners
     this.canvas.off('mouse:down', this.boundMouseDown);
     this.canvas.off('mouse:move', this.boundMouseMove);
     this.canvas.off('mouse:up', this.boundMouseUp);
+  }
+
+  // Optional: Add method to clear all measurements
+  public clearMeasurements() {
+    this.lines.forEach(line => this.canvas.remove(line));
+    this.measurementTexts.forEach(text => this.canvas.remove(text));
+    this.lines = [];
+    this.measurementTexts = [];
+    this.canvas.renderAll();
   }
 } 
