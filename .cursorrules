@@ -1,0 +1,12 @@
+- Use the latest version of React and Next.js.
+- Use typescript
+- Use latest version of fabric js version 6.5.3. Always refer https://www.npmjs.com/package/fabric this documentation for any doubts.
+// v6
+import { Canvas, Rect } from 'fabric'; // browser
+import { StaticCanvas, Rect } from 'fabric/node'; // node
+
+// v5
+import { fabric } from 'fabric';
+- Follow best folder structure and best coding practices
+- Use TypeScript.
+- Use Tailwind CSS for styling.
