@@ -54,6 +54,17 @@ export class MeasurementTool {
         width: 100,
       });
 
+      const distance = 0; // Initial distance is 0
+      const calibration = this.getCalibration();
+      const calibratedDistance = calibration.isCalibrated ? 
+        this.pixelsToFeet(distance) : distance;
+
+      this.measurementText.set({
+        text: `${calibratedDistance.toFixed(2)} ${calibration.isCalibrated ? 'ft' : 'px'}`,
+        left: pointer.x,
+        top: pointer.y,
+      });
+
       this.canvas.add(this.line);
       this.canvas.add(startMarker);
       this.canvas.add(this.measurementText);
@@ -108,8 +119,12 @@ export class MeasurementTool {
         )
       );
 
+      const calibration = this.getCalibration();
+      const calibratedDistance = calibration.isCalibrated ? 
+        this.pixelsToFeet(distance) : distance;
+
       this.measurementText.set({
-        text: `${distance} px`,
+        text: `${calibratedDistance.toFixed(2)} ${calibration.isCalibrated ? 'ft' : 'px'}`,
         left: (this.startPoint.x + pointer.x) / 2,
         top: (this.startPoint.y + pointer.y) / 2,
       });
@@ -157,5 +172,27 @@ export class MeasurementTool {
     this.lines = [];
     this.measurementTexts = [];
     this.canvas.renderAll();
+  }
+
+  private getCalibration(): { pixelsPerFoot: number, isCalibrated: boolean } {
+    const calibrationData = localStorage.getItem('calibrationScale');
+    
+    if (calibrationData) {
+      const { pixelsPerFoot } = JSON.parse(calibrationData);
+      return { 
+        pixelsPerFoot, 
+        isCalibrated: true 
+      };
+    }
+    
+    return { 
+      pixelsPerFoot: 0, 
+      isCalibrated: false 
+    };
+  }
+
+  private pixelsToFeet(pixels: number): number {
+    const calibration = this.getCalibration();
+    return pixels / calibration.pixelsPerFoot;
   }
 } 
