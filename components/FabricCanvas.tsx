@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
-import { Canvas } from "fabric";
-import ToolBar from "./ToolBar";
+import { useEffect, useRef, useState } from 'react';
+import { Canvas } from 'fabric';
+import { MeasurementTool } from './MeasurementTool';
 
 interface FabricCanvasProps {
   width?: number;
@@ -15,6 +15,8 @@ const FabricCanvas: React.FC<FabricCanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<Canvas | null>(null);
+  const measurementToolRef = useRef<MeasurementTool | null>(null);
+  const [isMeasuring, setIsMeasuring] = useState(false);
 
   useEffect(() => {
     if (canvasRef.current && !fabricCanvasRef.current) {
@@ -23,21 +25,49 @@ const FabricCanvas: React.FC<FabricCanvasProps> = ({
         height,
       });
 
+      // Initialize measurement tool
+      measurementToolRef.current = new MeasurementTool(fabricCanvasRef.current);
+
       return () => {
+        if (measurementToolRef.current) {
+          measurementToolRef.current.deactivate();
+        }
         fabricCanvasRef.current?.dispose();
         fabricCanvasRef.current = null;
       };
     }
   }, [width, height]);
 
+  const toggleMeasurementTool = () => {
+    if (measurementToolRef.current) {
+      if (!isMeasuring) {
+        measurementToolRef.current.activate();
+      } else {
+        measurementToolRef.current.deactivate();
+      }
+      setIsMeasuring(!isMeasuring);
+    }
+  };
+
   return (
     <div className="relative w-full h-full pointer-events-none">
-      <canvas
-        ref={canvasRef}
+      <canvas 
+        ref={canvasRef} 
         className="absolute top-0 left-0"
-        style={{ pointerEvents: "auto" }}
+        style={{ pointerEvents: 'auto' }}
       />
-     <ToolBar fabricCanvasRef={fabricCanvasRef} />
+      <div className="absolute top-2 left-2 z-20 pointer-events-auto">
+        <button
+          onClick={toggleMeasurementTool}
+          className={`px-4 py-2 rounded ${
+            isMeasuring 
+              ? 'bg-green-500 hover:bg-green-600' 
+              : 'bg-blue-500 hover:bg-blue-600'
+          } text-white`}
+        >
+          {isMeasuring ? 'Stop Measuring' : 'Measure'}
+        </button>
+      </div>
     </div>
   );
 };
